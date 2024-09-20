@@ -71,3 +71,23 @@ Objectives:
     content: "What service are you looking for today?",
   },
 ];
+
+export async function getChatCompletion(
+  apiKey: string,
+  model: string,
+  messages: Message[]
+) {
+  const response = await fetch("https://api.red-pill.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ messages, model }),
+  });
+
+  const data = (await response.json()) as any;
+  if (data.error) throw new Error(data.error);
+
+  return data.choices[0].message as Message;
+}
