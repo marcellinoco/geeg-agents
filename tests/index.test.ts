@@ -1,40 +1,244 @@
-import { afterAll, describe, expect, test, vi } from 'vitest'
-import { app } from '../src/'
+import { describe, expect, it, vi } from "vitest";
+import { app } from "../src/";
 
-// Set Testing env secrets
-const apiKey = JSON.stringify({apiKey: 'sk-qVBlJkO3e99t81623PsB0zHookSQJxU360gDMooLenN01gv2'})
-vi.stubEnv('secret', apiKey)
+const apiKey = JSON.stringify({
+  apiKey: "sk-qVBlJkO3e99t81623PsB0zHookSQJxU360gDMooLenN01gv2",
+});
 
-describe('Test RedPill AI Agent Contract', () => {
-  test('GET Test: Pass chatQuery through URL Query', async () => {
-    let chatQuery = 'Who are you?'
-    let model = 'o1-preview'
-    const resp = await app.request(encodeURI(`/?chatQuery=${chatQuery}&model=${model}`))
-    expect(resp.status).toBe(200)
-    expect(resp.headers.get('content-type')?.toLowerCase()).toBe('application/json; charset=utf-8')
-    const data = await resp.json()
-    console.log(data)
-    expect(data).toHaveProperty('model')
-    expect(data).toHaveProperty('chatQuery')
-    expect(data).toHaveProperty('message')
-  })
+vi.stubEnv("secret", apiKey);
+describe("Geeg LLM Agent Contract", () => {
+  let messages = [
+    {
+      role: "system",
+      content: `Task: Create an AI assistant to gather and refine requirements for a freelance gig.
 
-  test('POST Test: Pass chatQuery and model through body of POST request', async () => {
-    const input = { chatQuery: 'What is FooBar?', model: 'gpt-4o' }
-    const resp = await app.request('/', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    })
-    expect(resp.status).toBe(200)
-    expect(resp.headers.get('content-type')?.toLowerCase()).toBe('application/json; charset=utf-8')
-    const data = await resp.json()
-    console.log(data)
-    expect(data).toHaveProperty('model')
-    expect(data).toHaveProperty('chatQuery')
-    expect(data).toHaveProperty('message')
-  })
-})
+Objectives:
+- The assistant should iteratively gather and refine freelance gig requirements by asking open-ended questions, **inferring details on its own**, and asking for the user's **time constraints**.
+- The assistant should present a **text summary** of the project brief for confirmation before generating the final output.
+- The assistant should generate the output based on the user's confirmation without explicitly mentioning "JSON" or "output."
+- After sharing the final output, the assistant should **end the conversation** without further dialogue.
 
-afterAll(async () => {
-  console.log(`\nNow you are ready to publish your agent, add secrets, and interact with your agent in the following steps:\n- Execute: 'npm run publish-agent'\n- Set secrets: 'npm run set-secrets'\n- Go to the url produced by setting the secrets (e.g. https://wapo-testnet.phala.network/ipfs/QmPQJD5zv3cYDRM25uGAVjLvXGNyQf9Vonz7rqkQB52Jae?key=b092532592cbd0cf)`)
-})
+### Key Requirements:
+1. **Initial Question:**
+    - The assistant's first message should be: "What service are you looking for today?"
+
+2. **Open-Ended Requirements Gathering (No Direct Questions About Estimates):**
+    - The assistant should ask **open-ended questions** to gather information on the project scope, features, and any specific user preferences. The assistant should infer the necessary skills and project details without asking the user for direct estimates.
+      - For example, instead of asking, "How much time will this take?" the assistant should ask, "Can you describe the type of work you're looking to get done?" or "What features are you envisioning for this project?"
+
+3. **Asking for User's Time Constraints:**
+    - While the assistant will estimate the time required to complete the project, it should still ask the user for specific time constraints to ensure the deadline meets their needs.
+      - For example: "Are there any specific deadlines or timeframes you're aiming for?"
+
+4. **Breaking Down Components and Skills Inference:**
+    - The assistant should infer the required skills based on the user's project description, breaking down larger tasks into smaller components.
+      - For example, if the user mentions “developing a website,” the assistant could infer related skills like "front-end," "back-end," and "UI/UX design."
+      - Redundant but not duplicated skills are acceptable to cover different project components.
+
+5. **Inference of Time and Complexity:**
+    - The assistant should infer the estimated time required based on the complexity of the project. It should **overestimate** the time required to avoid setting unrealistic expectations.
+    - Time estimates should be inferred based on the user's description of the project's scope and features without asking for a direct estimate.
+
+6. **Presenting the Project Brief (Text Summary First):**
+    - After gathering the required details, the assistant should present a **text summary** of the project brief to the user. This summary includes the main details inferred by the assistant, including skills, time estimates, and a short description of the project.
+    - The assistant should ask the user to confirm if they are satisfied with the summary before generating the final output.
+    - Example: "Here's a summary of your project:  
+      **Skills needed:** front-end, back-end, ui/ux design, api integration.  
+      **Time estimate:** 100 hours.  
+      **Deadline:** 30 days.  
+      **Summary:** Develop a responsive website with front-end and back-end functionality, including UI/UX design and API integration."
+
+7. **Confirmation and Output:**
+    - The assistant should ask: "Does this summary look correct, or would you like to make any changes before I finalize it?"
+    - If the user requests changes, the assistant should refine the project brief based on additional input.
+    - **Once the user confirms satisfaction**, the assistant will generate the final output based on the project brief.
+    - The output will include:
+      - **skills**: An array of lower-case strings representing inferred skills (use shorter versions when possible, e.g., "front-end" instead of "front-end development").
+      - **summary**: A brief summary of the project requirements based on the user's input.
+      - **time_estimate**: The estimated time required to complete the gig (in hours), inferred by the assistant.
+      - **deadline**: The expected deadline (in days), factoring in both the assistant's estimate and the user's stated time constraints.
+      - **gigs**: The expected number of successful gigs the freelancer should have completed.
+      - **rating**: The expected average rating for the freelancer.
+
+8. **Example Project Brief (to be shown as the final output, not explicitly mentioning JSON):**
+{
+  "skills": ["front-end", "back-end", "ui/ux design", "api integration"],
+  "summary": "Develop a responsive website with front-end and back-end functionality, including UI/UX design and API integration.",
+  "time_estimate": 100,
+  "deadline": 30,
+  "gigs": 15,
+  "rating": 4.8
+}
+
+9. **End of Conversation:**
+  - After the final output is shared, the assistant will not say anything further. The JSON-like structure will mark the end of the conversation.`,
+    },
+    {
+      role: "assistant",
+      content: "What service are you looking for today?",
+    },
+  ];
+
+  it("Should return correct prompt", async () => {
+    const res = await app.request("/prompt");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "application/json; charset=utf-8"
+    );
+
+    const data = await res.json();
+    expect(data).toHaveLength(2);
+    expect(data[0]).toHaveProperty("role");
+    expect(data[0].role).toBe("system");
+    expect(data[1]).toHaveProperty("role");
+    expect(data[1].role).toBe("assistant");
+  });
+
+  messages.push({
+    role: "user",
+    content: "I want to create a logo for my cafe",
+  });
+
+  it("Should initiate requirement gathering", async () => {
+    const res = await app.request("/", {
+      method: "POST",
+      body: JSON.stringify({ model: "gpt-4o", messages }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "application/json; charset=utf-8"
+    );
+
+    const data = await res.json();
+    console.info(data);
+
+    expect(data).toHaveProperty("role");
+    expect(data.role).toBe("assistant");
+    expect(data).toHaveProperty("content");
+  });
+
+  messages.push(
+    {
+      role: "assistant",
+      content:
+        "That sounds great! Could you describe the type of logo you're envisioning for your cafe? For example, do you have any specific themes, colors, or styles in mind?",
+    },
+    {
+      role: "user",
+      content:
+        "I want a minimalistic logo with leaves element and monochrome palette",
+    }
+  );
+
+  it("Should refine requirements", async () => {
+    const res = await app.request("/", {
+      method: "POST",
+      body: JSON.stringify({ model: "gpt-4o", messages }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "application/json; charset=utf-8"
+    );
+
+    const data = await res.json();
+    console.info(data);
+
+    expect(data).toHaveProperty("role");
+    expect(data.role).toBe("assistant");
+    expect(data).toHaveProperty("content");
+  });
+
+  messages.push(
+    {
+      role: "assistant",
+      content:
+        "Understood. A minimalistic logo with a leaves element and a monochrome palette sounds elegant and clean.\n\nAre there any particular design elements or preferences you want to include? For example, specific shapes, text, or fonts?",
+    },
+    { role: "user", content: "I'm flexible for this one" }
+  );
+
+  it("Should ask for timeline", async () => {
+    const res = await app.request("/", {
+      method: "POST",
+      body: JSON.stringify({ model: "gpt-4o", messages }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "application/json; charset=utf-8"
+    );
+
+    const data = await res.json();
+    console.info(data);
+
+    expect(data).toHaveProperty("role");
+    expect(data.role).toBe("assistant");
+    expect(data).toHaveProperty("content");
+  });
+
+  messages.push(
+    {
+      role: "assistant",
+      content:
+        "Got it. We'll leave the specifics on shapes, text, and fonts flexible for the designer to creatively explore.\n\nAre there any specific deadlines or timeframes you're aiming for the completion of this logo design?",
+    },
+    { role: "user", content: "I hope it can be done in two weeks" }
+  );
+
+  it("Should summarize gig requirements", async () => {
+    const res = await app.request("/", {
+      method: "POST",
+      body: JSON.stringify({ model: "gpt-4o", messages }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "application/json; charset=utf-8"
+    );
+
+    const data = await res.json();
+    console.info(data);
+
+    expect(data).toHaveProperty("role");
+    expect(data.role).toBe("assistant");
+    expect(data).toHaveProperty("content");
+  });
+
+  messages.push(
+    {
+      role: "assistant",
+      content:
+        "Great, we'll aim for a two-week completion time frame.\n\nHere's a summary of your project:\n\n**Skills needed:** logo design, graphic design, minimalistic design.\n**Time estimate:** 30 hours.\n**Deadline:** 14 days.\n**Summary:** Design a minimalistic logo for a cafe, incorporating a leaves element and using a monochrome palette. Specific shapes, text, and fonts are left to the designer's discretion.\n\nDoes this summary look correct, or would you like to make any changes before I finalize it?",
+    },
+    { role: "user", content: "I'm happy with the requirement" }
+  );
+
+  it("Should generate requirement as JSON", async () => {
+    const res = await app.request("/", {
+      method: "POST",
+      body: JSON.stringify({ model: "gpt-4o", messages }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
+      "application/json; charset=utf-8"
+    );
+
+    const data = await res.json();
+    console.info(data);
+
+    expect(data).toHaveProperty("role");
+    expect(data.role).toBe("assistant");
+    expect(data).toHaveProperty("content");
+
+    const content = JSON.parse(data.content);
+    expect(content).toHaveProperty("skills");
+    expect(content).toHaveProperty("summary");
+    expect(content).toHaveProperty("time_estimate");
+    expect(content).toHaveProperty("deadline");
+    expect(content).toHaveProperty("gigs");
+    expect(content).toHaveProperty("rating");
+  });
+});
