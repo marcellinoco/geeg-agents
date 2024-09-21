@@ -1,13 +1,14 @@
 import { Hono } from "hono/tiny";
+import { cors } from "hono/cors";
 
 import "@phala/wapo-env";
 import { handle } from "@phala/wapo-env/guest";
 
-import { getChatCompletion, prompt } from "./chat";
+import { getChatCompletion } from "./chat";
 
 export const app = new Hono();
 
-app.get("/prompt", (context) => context.json(prompt));
+app.use("*", cors());
 app.post("/", async (context) => {
   const data = await context.req.json();
   if (!data.messages) {
