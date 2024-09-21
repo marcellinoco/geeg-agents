@@ -2,104 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import { app } from "../src/";
 
 const apiKey = JSON.stringify({
-  apiKey: "sk-qVBlJkO3e99t81623PsB0zHookSQJxU360gDMooLenN01gv2",
+  apiKey: "sk-q2w8m0zbDrz9iOYxA69TkPMSMVZcw7WijMPWEoAK3exBRvjV",
 });
 
 vi.stubEnv("secret", apiKey);
 describe("Geeg LLM Agent Contract", () => {
-  let messages = [
-    {
-      role: "system",
-      content: `Task: Create an AI assistant to gather and refine requirements for a freelance gig.
-
-Objectives:
-- The assistant should iteratively gather and refine freelance gig requirements by asking open-ended questions, **inferring details on its own**, and asking for the user's **time constraints**.
-- The assistant should present a **text summary** of the project brief for confirmation before generating the final output.
-- The assistant should generate the output based on the user's confirmation without explicitly mentioning "JSON" or "output."
-- After sharing the final output, the assistant should **end the conversation** without further dialogue.
-
-### Key Requirements:
-1. **Initial Question:**
-    - The assistant's first message should be: "What service are you looking for today?"
-
-2. **Open-Ended Requirements Gathering (No Direct Questions About Estimates):**
-    - The assistant should ask **open-ended questions** to gather information on the project scope, features, and any specific user preferences. The assistant should infer the necessary skills and project details without asking the user for direct estimates.
-      - For example, instead of asking, "How much time will this take?" the assistant should ask, "Can you describe the type of work you're looking to get done?" or "What features are you envisioning for this project?"
-
-3. **Asking for User's Time Constraints:**
-    - While the assistant will estimate the time required to complete the project, it should still ask the user for specific time constraints to ensure the deadline meets their needs.
-      - For example: "Are there any specific deadlines or timeframes you're aiming for?"
-
-4. **Breaking Down Components and Skills Inference:**
-    - The assistant should infer the required skills based on the user's project description, breaking down larger tasks into smaller components.
-      - For example, if the user mentions “developing a website,” the assistant could infer related skills like "front-end," "back-end," and "UI/UX design."
-      - Redundant but not duplicated skills are acceptable to cover different project components.
-
-5. **Inference of Time and Complexity:**
-    - The assistant should infer the estimated time required based on the complexity of the project. It should **overestimate** the time required to avoid setting unrealistic expectations.
-    - Time estimates should be inferred based on the user's description of the project's scope and features without asking for a direct estimate.
-
-6. **Presenting the Project Brief (Text Summary First):**
-    - After gathering the required details, the assistant should present a **text summary** of the project brief to the user. This summary includes the main details inferred by the assistant, including skills, time estimates, and a short description of the project.
-    - The assistant should ask the user to confirm if they are satisfied with the summary before generating the final output.
-    - Example: "Here's a summary of your project:  
-      **Skills needed:** front-end, back-end, ui/ux design, api integration.  
-      **Time estimate:** 100 hours.  
-      **Deadline:** 30 days.  
-      **Summary:** Develop a responsive website with front-end and back-end functionality, including UI/UX design and API integration."
-
-7. **Confirmation and Output:**
-    - The assistant should ask: "Does this summary look correct, or would you like to make any changes before I finalize it?"
-    - If the user requests changes, the assistant should refine the project brief based on additional input.
-    - **Once the user confirms satisfaction**, the assistant will generate the final output based on the project brief.
-    - The output will include:
-      - **skills**: An array of lower-case strings representing inferred skills (use shorter versions when possible, e.g., "front-end" instead of "front-end development").
-      - **summary**: A brief summary of the project requirements based on the user's input.
-      - **time_estimate**: The estimated time required to complete the gig (in hours), inferred by the assistant.
-      - **deadline**: The expected deadline (in days), factoring in both the assistant's estimate and the user's stated time constraints.
-      - **gigs**: The expected number of successful gigs the freelancer should have completed.
-      - **rating**: The expected average rating for the freelancer.
-
-8. **Example Project Brief (to be shown as the final output, not explicitly mentioning JSON):**
-{
-  "skills": ["front-end", "back-end", "ui/ux design", "api integration"],
-  "summary": "Develop a responsive website with front-end and back-end functionality, including UI/UX design and API integration.",
-  "time_estimate": 100,
-  "deadline": 30,
-  "gigs": 15,
-  "rating": 4.8
-}
-
-9. **End of Conversation:**
-  - After the final output is shared, the assistant will not say anything further. The JSON-like structure will mark the end of the conversation.`,
-    },
-    {
-      role: "assistant",
-      content: "What service are you looking for today?",
-    },
-  ];
-
-  it("Should return correct prompt", async () => {
-    const res = await app.request("/prompt");
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
-      "application/json; charset=utf-8"
-    );
-
-    const data = await res.json();
-    expect(data).toHaveLength(2);
-    expect(data[0]).toHaveProperty("role");
-    expect(data[0].role).toBe("system");
-    expect(data[1]).toHaveProperty("role");
-    expect(data[1].role).toBe("assistant");
-  });
-
-  messages.push({
-    role: "user",
-    content: "I want to create a logo for my cafe",
-  });
-
   it("Should initiate requirement gathering", async () => {
+    const messages = [
+      {
+        role: "user",
+        content: "I want to create a logo for my cafe",
+      },
+    ];
+
     const res = await app.request("/", {
       method: "POST",
       body: JSON.stringify({ model: "gpt-4o", messages }),
@@ -111,111 +26,75 @@ Objectives:
     );
 
     const data = await res.json();
-    console.info(data);
-
     expect(data).toHaveProperty("role");
     expect(data.role).toBe("assistant");
     expect(data).toHaveProperty("content");
   });
-
-  messages.push(
-    {
-      role: "assistant",
-      content:
-        "That sounds great! Could you describe the type of logo you're envisioning for your cafe? For example, do you have any specific themes, colors, or styles in mind?",
-    },
-    {
-      role: "user",
-      content:
-        "I want a minimalistic logo with leaves element and monochrome palette",
-    }
-  );
-
-  it("Should refine requirements", async () => {
-    const res = await app.request("/", {
-      method: "POST",
-      body: JSON.stringify({ model: "gpt-4o", messages }),
-    });
-
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
-      "application/json; charset=utf-8"
-    );
-
-    const data = await res.json();
-    console.info(data);
-
-    expect(data).toHaveProperty("role");
-    expect(data.role).toBe("assistant");
-    expect(data).toHaveProperty("content");
-  });
-
-  messages.push(
-    {
-      role: "assistant",
-      content:
-        "Understood. A minimalistic logo with a leaves element and a monochrome palette sounds elegant and clean.\n\nAre there any particular design elements or preferences you want to include? For example, specific shapes, text, or fonts?",
-    },
-    { role: "user", content: "I'm flexible for this one" }
-  );
-
-  it("Should ask for timeline", async () => {
-    const res = await app.request("/", {
-      method: "POST",
-      body: JSON.stringify({ model: "gpt-4o", messages }),
-    });
-
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
-      "application/json; charset=utf-8"
-    );
-
-    const data = await res.json();
-    console.info(data);
-
-    expect(data).toHaveProperty("role");
-    expect(data.role).toBe("assistant");
-    expect(data).toHaveProperty("content");
-  });
-
-  messages.push(
-    {
-      role: "assistant",
-      content:
-        "Got it. We'll leave the specifics on shapes, text, and fonts flexible for the designer to creatively explore.\n\nAre there any specific deadlines or timeframes you're aiming for the completion of this logo design?",
-    },
-    { role: "user", content: "I hope it can be done in two weeks" }
-  );
-
-  it("Should summarize gig requirements", async () => {
-    const res = await app.request("/", {
-      method: "POST",
-      body: JSON.stringify({ model: "gpt-4o", messages }),
-    });
-
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")?.toLowerCase()).toBe(
-      "application/json; charset=utf-8"
-    );
-
-    const data = await res.json();
-    console.info(data);
-
-    expect(data).toHaveProperty("role");
-    expect(data.role).toBe("assistant");
-    expect(data).toHaveProperty("content");
-  });
-
-  messages.push(
-    {
-      role: "assistant",
-      content:
-        "Great, we'll aim for a two-week completion time frame.\n\nHere's a summary of your project:\n\n**Skills needed:** logo design, graphic design, minimalistic design.\n**Time estimate:** 30 hours.\n**Deadline:** 14 days.\n**Summary:** Design a minimalistic logo for a cafe, incorporating a leaves element and using a monochrome palette. Specific shapes, text, and fonts are left to the designer's discretion.\n\nDoes this summary look correct, or would you like to make any changes before I finalize it?",
-    },
-    { role: "user", content: "I'm happy with the requirement" }
-  );
 
   it("Should generate requirement as JSON", async () => {
+    const messages = [
+      {
+        role: "user",
+        content: "I want to create a logo for my cafe",
+      },
+      {
+        role: "assistant",
+        content:
+          "That sounds exciting! Can you describe the type of logo you're envisioning? Any specific elements, style, or colors you'd like incorporated?",
+      },
+      {
+        role: "user",
+        content:
+          "I want the logo to be green and also have leaf elements. The logo should be minimalistic and modern",
+      },
+      {
+        role: "assistant",
+        content:
+          "Great choice! A minimalistic and modern green logo with leaf elements will make your cafe stand out. \n\nAre there any particular fonts or typography styles you'd prefer? Also, would you like the logo to include the name of your cafe or any specific text?",
+      },
+      {
+        role: "user",
+        content:
+          'No preference. The brand is "Kopi Sore", I\'m open to either adding it to the logo or not',
+      },
+      {
+        role: "assistant",
+        content:
+          'Understood. We have a minimalistic and modern green logo with leaf elements, possibly incorporating the name "Kopi Sore".\n\nAre there any specific deadlines or timeframes you\'re aiming for this project?',
+      },
+      {
+        role: "user",
+        content: "I need it by next month",
+      },
+      {
+        role: "assistant",
+        content:
+          "Got it, so we have a month to develop the logo.\n\nWhat kind of experience are you looking for in a freelancer? For instance, would you prefer someone who has extensive experience in graphic design and logo creation?",
+      },
+      {
+        role: "user",
+        content: "Not really, just someone who have a good track record",
+      },
+      {
+        role: "assistant",
+        content:
+          "Understood. You're looking for someone with a solid track record in graphic design and logo creation.\n\nNow, what is your overall budget for this project?",
+      },
+      {
+        role: "user",
+        content: "I have $200 max",
+      },
+      {
+        role: "assistant",
+        content:
+          'Thank you for providing your budget. Let me summarize the project details we\'ve gathered so far:\n\n**Skills needed:** graphic design, logo creation.\n**Style:** Minimalistic and modern.\n**Color scheme:** Green with leaf elements.\n**Text preference:** Possibly including the name "Kopi Sore", open to both options.\n**Time estimate:** Approximately 20 hours (inferred based on the project\'s nature and minimalistic design).\n**Deadline:** 30 days.\n**Budget:** $200.\n**Hourly rate:** $10/hour (inferred from budget and time estimate).\n**Experience level:** Good track record in graphic design and logo creation.\n\nHere\'s a summary of your project:\n- **Skills needed:** graphic design, logo creation.\n- **Time estimate:** 20 hours.\n- **Deadline:** 30 days.\n- **Budget:** $200.\n- **Hourly rate:** $10/hour.\n- **Experience level:** A freelancer with a good track record in graphic design and logo creation.\n- **Summary:** Create a minimalistic and modern green logo with leaf elements for "Kopi Sore", possibly including the name.\n\nDoes this summary look correct, or would you like to make any changes before I finalize it?',
+      },
+      {
+        role: "user",
+        content: "Looks good",
+      },
+    ];
+
     const res = await app.request("/", {
       method: "POST",
       body: JSON.stringify({ model: "gpt-4o", messages }),
