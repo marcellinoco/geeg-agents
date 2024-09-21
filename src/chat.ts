@@ -88,11 +88,9 @@ Objectives:
 
 export async function getChatCompletion(
   apiKey: string,
-  model: string,
   conversation: Message[]
 ) {
   const messages = [...prompt, ...conversation];
-  console.log(messages);
 
   const response = await fetch("https://api.red-pill.ai/v1/chat/completions", {
     method: "POST",
@@ -100,7 +98,7 @@ export async function getChatCompletion(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ messages, model }),
+    body: JSON.stringify({ messages, model: "gpt-4o" }),
   });
 
   const data = (await response.json()) as any;

@@ -7,6 +7,20 @@ const apiKey = JSON.stringify({
 
 vi.stubEnv("secret", apiKey);
 describe("Geeg LLM Agent Contract", () => {
+  it("Should allow CORS for all origins", async () => {
+    const messages = [
+      {
+        role: "user",
+        content: "I want to create a logo for my cafe",
+      },
+    ];
+
+    const res = await app.request(`/?messages=${JSON.stringify(messages)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
   it("Should initiate requirement gathering", async () => {
     const messages = [
       {
@@ -15,10 +29,7 @@ describe("Geeg LLM Agent Contract", () => {
       },
     ];
 
-    const res = await app.request("/", {
-      method: "POST",
-      body: JSON.stringify({ model: "gpt-4o", messages }),
-    });
+    const res = await app.request(`/?messages=${JSON.stringify(messages)}`);
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")?.toLowerCase()).toBe(
@@ -95,10 +106,7 @@ describe("Geeg LLM Agent Contract", () => {
       },
     ];
 
-    const res = await app.request("/", {
-      method: "POST",
-      body: JSON.stringify({ model: "gpt-4o", messages }),
-    });
+    const res = await app.request(`/?messages=${JSON.stringify(messages)}`);
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")?.toLowerCase()).toBe(

@@ -9,12 +9,12 @@ import { getChatCompletion } from "./chat";
 export const app = new Hono();
 
 app.use("*", cors());
-app.post("/", async (context) => {
-  const data = await context.req.json();
-  if (!data.messages) {
+app.get("/", async (context) => {
+  const query = await context.req.queries("messages");
+  if (!query || query.length === 0) {
     return context.json({
       status: "error",
-      message: "Required message body missing",
+      message: "Required message query missing",
     });
   }
 
@@ -35,12 +35,8 @@ app.post("/", async (context) => {
     });
   }
 
-  const response = await getChatCompletion(
-    vault.apiKey,
-    data.model || "gpt-4o",
-    data.messages
-  );
-
+  const messages = JSON.parse(query[0]);
+  const response = await getChatCompletion(vault.apiKey, messages);
   return context.json(response);
 });
 
